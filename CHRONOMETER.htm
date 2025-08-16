@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="bg"><head>
+<meta charset="UTF-8">
+<title>Хронометър</title>
+<style>
+  @font-face {
+    font-family: 'HP15C';
+    src: url('HP-15C_Simulator_Font.ttf') format('truetype');
+  }
+
+  body {
+    font-family: 'HP15C', monospace, sans-serif;
+    background: #121212;
+    color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+    font-size: 10vw; /* автоматично мащабиране според ширината на прозореца */
+    user-select: none;
+    cursor: none;
+    touch-action: manipulation;
+  }
+
+  #stopwatch {
+    text-align: center;
+    letter-spacing: 0.05em;
+  }
+</style>
+</head>
+<body>
+  <div id="stopwatch">00:00:00:00</div>
+
+  <script>
+    let startTime = 0;
+    let elapsedTime = 0;
+    let timerInterval = null;
+    let running = false;
+
+    let tapTimes = [];
+
+    function pad(num, size = 2) {
+      return num.toString().padStart(size, '0');
+    }
+
+    function updateDisplay() {
+      let time = running 
+        ? Date.now() - startTime + elapsedTime 
+        : elapsedTime;
+
+      let hours = Math.floor(time / (1000 * 60 * 60));
+      let minutes = Math.floor((time % (1000 * 60 * 60)) / (1000 * 60));
+      let seconds = Math.floor((time % (1000 * 60)) / 1000);
+      let centiseconds = Math.floor((time % 1000) / 10);
+
+      document.getElementById("stopwatch").textContent =
+        `${pad(hours)}:${pad(minutes)}:${pad(seconds)}:${pad(centiseconds)}`;
+    }
+
+    function startStop() {
+      if (!running) {
+        startTime = Date.now();
+        timerInterval = setInterval(updateDisplay, 10);
+        running = true;
+      } else {
+        clearInterval(timerInterval);
+        elapsedTime += Date.now() - startTime;
+        running = false;
+      }
+    }
+
+    function resetStopwatch() {
+      clearInterval(timerInterval);
+      running = false;
+      startTime = 0;
+      elapsedTime = 0;
+      document.getElementById("stopwatch").textContent = "00:00:00:00";
+    }
+
+    function enterFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(err => {
+          console.warn(`Грешка при fullscreen: ${err.message}`);
+        });
+      }
+    }
+
+    function exitFullscreen() {
+      if (document.fullscreenElement) {
+        document.exitFullscreen();
+      }
+    }
+
+    // --- Клавиатурно управление ---
+    document.addEventListener("keydown", (e) => {
+      if (e.code === "Space") startStop();
+      else if (e.key === "Enter") resetStopwatch();
+      else if (e.key.toLowerCase() === "f") enterFullscreen();
+      else if (e.key === "Escape") exitFullscreen();
+    });
+
+    // --- Тъч управление ---
+    document.addEventListener("touchstart", (e) => {
+      const now = Date.now();
+
+      if (e.touches.length === 1) {
+        startStop();
+      }
+
+      tapTimes.push(now);
+      tapTimes = tapTimes.filter(t => now - t <= 600);
+
+      if (tapTimes.length >= 3) {
+        resetStopwatch();
+        tapTimes = [];
+      }
+    });
+
+    // --- Автоматично оразмеряване при промяна на прозореца ---
+    function resizeFont() {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      const size = Math.min(w / 6, h / 1.2); // пропорционално на прозореца
+      document.body.style.fontSize = size + 'px';
+    }
+    window.addEventListener('resize', resizeFont);
+    resizeFont(); // начален размер
+
+    updateDisplay();
+  </script>
+</body>
+</html>
